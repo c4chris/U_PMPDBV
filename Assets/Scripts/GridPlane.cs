@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
-public class Grid : MonoBehaviour {
+public class GridPlane : MonoBehaviour {
 
 	public int xSize, ySize;
 
@@ -14,7 +14,7 @@ public class Grid : MonoBehaviour {
 
 	private void Generate () {
 		GetComponent<MeshFilter>().mesh = mesh = new Mesh();
-		mesh.name = "Procedural Grid";
+		mesh.name = "Procedural GridPlane";
 
 		vertices = new Vector3[(xSize + 1) * (ySize + 1)];
 		Vector2[] uv = new Vector2[vertices.Length];
