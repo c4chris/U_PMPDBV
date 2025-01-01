@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.Networking;
+using System;
 using System.Collections;
+using System.Runtime.InteropServices;
 
 // UnityWebRequest.Get example
 
@@ -43,20 +45,41 @@ using System.Collections;
 //    callback(tempInt);
 //}
 
-public class Example : MonoBehaviour
+[RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
+public class PDBentry : MonoBehaviour
 {
+    [DllImport("PMPDBVDLL")]
+    public static extern void DebugCBSetup(CallbackDebugDelegate callback);
+    [DllImport("PMPDBVDLL")]
+    public static extern short InitGlobals();
+    [DllImport("PMPDBVDLL")]
+    public static extern void doPDBinput(string path, string name);
+
+    public delegate void CallbackDebugDelegate(IntPtr msg);
+    private static CallbackDebugDelegate delegateInstance;
+
+    public string entry = "1crn";
     void Start()
     {
-        // A correct website page.
-        StartCoroutine(GetRequest("https://www.example.com"));
-
-        // A non-existing page.
-        StartCoroutine(GetRequest("https://error.html"));
+        delegateInstance = DebugDelegate;
+        DebugCBSetup(delegateInstance);
+        Debug.Log("InitGlobals() returned " +  InitGlobals()); 
         // Get entry
-        StartCoroutine(GetText("1crn"));
+        StartCoroutine(GetText(entry, (path) => { EntryLoaded(path); }));
     }
 
-    IEnumerator GetText(string entry_name)
+    void Update()
+    {
+        
+    }
+
+    private void EntryLoaded(string path)
+    {
+        Debug.Log("We have loaded entry " + entry + " at " + path);
+        doPDBinput(path, entry); 
+    }
+
+    IEnumerator GetText(string entry_name, Action<string> loaded)
     {
         string url = "https://files.rcsb.org/download/" + entry_name + ".pdb";
         using (UnityWebRequest www = UnityWebRequest.Get(url))
@@ -73,35 +96,18 @@ public class Example : MonoBehaviour
                     break;
                 case UnityWebRequest.Result.Success:
                     string savePath = string.Format("{0}/{1}.pdb", Application.persistentDataPath, entry_name);
+                    Debug.Log("Saving " + entry_name + " into " + savePath);
                     System.IO.File.WriteAllText(savePath, www.downloadHandler.text);
                     Debug.Log(entry_name + ":\nReceived: " + www.downloadHandler.text);
+                    loaded(savePath);
                     break;
             }
         }
     }
-    IEnumerator GetRequest(string uri)
+
+    public static void DebugDelegate(IntPtr c)
     {
-        using (UnityWebRequest webRequest = UnityWebRequest.Get(uri))
-        {
-            // Request and wait for the desired page.
-            yield return webRequest.SendWebRequest();
-
-            string[] pages = uri.Split('/');
-            int page = pages.Length - 1;
-
-            switch (webRequest.result)
-            {
-                case UnityWebRequest.Result.ConnectionError:
-                case UnityWebRequest.Result.DataProcessingError:
-                    Debug.LogError(pages[page] + ": Error: " + webRequest.error);
-                    break;
-                case UnityWebRequest.Result.ProtocolError:
-                    Debug.LogError(pages[page] + ": HTTP Error: " + webRequest.error);
-                    break;
-                case UnityWebRequest.Result.Success:
-                    Debug.Log(pages[page] + ":\nReceived: " + webRequest.downloadHandler.text);
-                    break;
-            }
-        }
+        string s = Marshal.PtrToStringAnsi(c);
+        Debug.Log("From DLL: " + s);
     }
 }
