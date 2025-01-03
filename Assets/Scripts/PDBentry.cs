@@ -201,6 +201,53 @@ public class PDBentry : MonoBehaviour
 
     }
 
+    /// copied from https://github.com/lazysquirrellabs/sphere_generator in IcosphereGenerator.cs
+    /// <summary>
+    /// Vertices of a regular icosahedron, obtained via experimentation.
+    /// </summary>
+    private static readonly Vector3[] IcosphereVertices =
+    {
+        new(0.8506508f,           0.5257311f,         0f),            // 0
+        new(0.000000101405476f,   0.8506507f,        -0.525731f),     // 1
+        new(0.000000101405476f,   0.8506506f,         0.525731f),     // 2
+        new(0.5257309f,          -0.00000006267203f, -0.85065067f),   // 3
+        new(0.52573115f,         -0.00000006267203f,  0.85065067f),   // 4
+        new(0.8506508f,          -0.5257311f,         0f),            // 5
+        new(-0.52573115f,         0.00000006267203f, -0.85065067f),   // 6
+        new(-0.8506508f,          0.5257311f,         0f),            // 7
+        new(-0.5257309f,          0.00000006267203f,  0.85065067f),   // 8
+        new(-0.000000101405476f, -0.8506506f,        -0.525731f),     // 9
+        new(-0.000000101405476f, -0.8506507f,         0.525731f),     // 10
+        new(-0.8506508f,         -0.5257311f,         0f)             // 11
+    };
+
+    /// <summary>
+    /// Indices of the triangles of a regular icosahedron, obtained via experimentation.
+    /// </summary>
+    private static readonly int[] IcosphereIndices =
+    {
+         0,  1,  2,
+         0,  3,  1,
+         0,  2,  4,
+         3,  0,  5,
+         0,  4,  5,
+         1,  3,  6,
+         1,  7,  2,
+         7,  1,  6,
+         4,  2,  8,
+         7,  8,  2,
+         9,  3,  5,
+         6,  3,  9,
+         5,  4, 10,
+         4,  8, 10,
+         9,  5, 10,
+         7,  6, 11,
+         7, 11,  8,
+        11,  6,  9,
+         8, 11, 10,
+        10, 11,  9
+    };
+
     public delegate void GL_atmDelegate(FPoint3D A, short layer, ushort group, ushort atom, byte chain, long color);
     public delegate void GL_bndDelegate(FPoint3D A, FPoint3D B, short layer, ushort group, ushort atomA, ushort atomB, byte chain, long color);
     public delegate void GL_Atom_ColorDelegate(IntPtr name, double red, double green, double blue, Boolean isMetallic);
@@ -267,9 +314,10 @@ public class PDBentry : MonoBehaviour
         {
             nb = meshList.Count;
             Mesh mesh = new Mesh();
-            // We can have more than 65k vertices per mesh...
-            mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            // Uncomment this if there are more than 65k vertices per mesh...
+            //mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             mesh.CombineMeshes(meshList.ToArray());
+            Debug.Log("Creating new mesh with " + mesh.vertexCount + " vertices");
             // if we do not combine the submeshes, we have to set 1 material per submesh
             //mesh.CombineMeshes(meshList.ToArray(), false);
             GetComponent<MeshFilter>().sharedMesh = mesh;
@@ -319,15 +367,25 @@ public class PDBentry : MonoBehaviour
     public static void GL_atm(FPoint3D A, short layer, ushort group, ushort atom, byte chain, long color)
     {
         char c = Convert.ToChar(chain);
-        Debug.Log("GL_atm(" + A + ", " + layer + ", " + group + ", " + atom + ", " + c + ", " + color + ")");
-        CubeSphereGenerator gen = new CubeSphereGenerator
-        {
-            radius = 1f,
-            gridSize = 5
-        };
+        //Debug.Log("GL_atm(" + A + ", " + layer + ", " + group + ", " + atom + ", " + c + ", " + color + ")");
+        /// the cubeSpheres might look nicer but use a lot of vertices...  Use an icosahedron for now
+        //CubeSphereGenerator gen = new CubeSphereGenerator
+        //{
+        //    radius = 1f,
+        //    gridSize = 5
+        //};
+        Mesh mesh = new Mesh();
+        // Not sure what to do with the name atm
+        mesh.name = "name";
+        mesh.SetVertices(IcosphereVertices);
+        mesh.SetIndices(IcosphereIndices, MeshTopology.Triangles, 0);
+        mesh.RecalculateBounds();
+        mesh.RecalculateNormals();
+        mesh.RecalculateTangents();
         CombineInstance ci = new CombineInstance
         {
-            mesh = gen.Generate("name"),
+            //mesh = gen.Generate("name"),
+            mesh = mesh,
             transform = new Matrix4x4(new Vector4(1, 0, 0, 0),
                                       new Vector4(0, 1, 0, 0),
                                       new Vector4(0, 0, 1, 0),
